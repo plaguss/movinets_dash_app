@@ -1,4 +1,2 @@
 #!/bin/bash
-#aws s3 cp s3://cidaen.tfm.plaguss/assets/ /tmp/ --recursive
-
-pip3 install dash dash-bootstrap-components boto3
+pip3 install dash dash-bootstrap-components boto3 botocore
