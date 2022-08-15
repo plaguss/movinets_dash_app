@@ -1,20 +1,19 @@
-"""_summary_
-"""
+"""Dash app for crossfit movement classifier with MoViNets. """
 
-from pathlib import Path
-
-import dash
-import dash_bootstrap_components as dbc
-
-import boto3
-
-from dash import html, dcc, Input, Output, State
 import base64
 import json
+from pathlib import Path
 
+import boto3
+import dash
+import dash_bootstrap_components as dbc
+from botocore.exceptions import NoCredentialsError
+from dash import Input, Output, State, dcc, html
 
 app = dash.Dash(
-    __name__, external_stylesheets=[dbc.themes.SLATE], update_title="Crossfit Movement"
+    __name__,
+    external_stylesheets=[dbc.themes.JOURNAL],
+    update_title="Crossfit Movement",
 )
 app.title = "Crossfit Movement Classifier"
 server = app.server
@@ -28,7 +27,7 @@ except Exception as exc:
 
 
 # Get access to the lambda function
-client = boto3.client('lambda')
+client = boto3.client("lambda")
 
 
 upload_field = dbc.Container(
@@ -75,15 +74,21 @@ def prepare_video(contents):
 
     contents is the input passed to play_video callback.
     """
-    return bytes(json.dumps({"video": contents.split(",")[1]}), "utf-8")
+    # To see the contents passed when uploading a video, print here:
+    # contents[:200] are a str of the form:
+    # data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQABkpxtZGF0AAACrwYF//+r3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1NSByMjkxNyAwYTg0ZDk4IC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcH
+    # Only the video content is passed, splitting by the ,
+    video_from_base64 = base64.b64encode(contents.split(",")[1].encode("utf-8")).decode(
+        "utf8"
+    )
+    # The content must be decoded to be sent as bytes
+
+    return bytes(json.dumps({"video": video_from_base64}), "utf-8")
 
 
 @app.callback(Output("video-loaded", "children"), [Input("upload-clip", "contents")])
 def play_video(contents):
     """contents represents directly the video as uploaded by the user."""
-    # To see the contents passed when uploading a video, print here:
-    # contents[:200] are a str of the form:
-    # data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQABkpxtZGF0AAACrwYF//+r3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1NSByMjkxNyAwYTg0ZDk4IC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcH
     return html.Video(controls=True, id="movie_player", autoPlay=True, src=contents)
 
 
@@ -119,27 +124,18 @@ submit_button = dbc.Container(
 
 def get_prediction(video):
     """Calls the aws lambda function with the video passed and returns the predictions."""
-    print("this is the video for the AWS Lambda")
+    try:
+        prediction_response = client.invoke(
+            FunctionName="movinet_for_crossfit",
+            Payload=video,
+        )
+        prediction = prediction_response["body"]["prediction"]
 
-    # prediction_response = client.invoke(
-    #     FunctionName='string',
-    #     # InvocationType='Event'|'RequestResponse'|'DryRun',
-    #     # LogType='None'|'Tail',
-    #     # ClientContext='string',
-    #     Payload=video,
-    #     # Qualifier='string'
-    # )
-    # prediction = prediction_response["body"]["prediction"]
+    except NoCredentialsError as exc:
+        print(f"Credential errors when calling the lambda function: {exc}")
+        prediction = (("ERROR", -1.0),) * 5
 
-    import random
-
-    return [
-        [random.sample(labels, 1)[0], round(random.uniform(0, 1), 4)],
-        [random.sample(labels, 1)[0], round(random.uniform(0, 1), 4)],
-        [random.sample(labels, 1)[0], round(random.uniform(0, 1), 4)],
-        [random.sample(labels, 1)[0], round(random.uniform(0, 1), 4)],
-        [random.sample(labels, 1)[0], round(random.uniform(0, 1), 4)],
-    ]
+    return prediction
 
 
 def get_table(prediction):
@@ -161,7 +157,9 @@ def get_table(prediction):
 
 # @app.callback(Output("video-loaded", "children"), [Input("submit-video-button", "contents")])
 @app.callback(
-    Output("prediction-table", "children"), [Input("submit-video-button", "n_clicks")], State('upload-clip', 'contents')
+    Output("prediction-table", "children"),
+    [Input("submit-video-button", "n_clicks")],
+    State("upload-clip", "contents"),
 )
 def call_lambda(n_clicks, contents):
     """contents represents directly the video as uploaded by the user."""
@@ -179,14 +177,18 @@ prediction = dbc.Card(
     children=dbc.Row(
         [
             submit_button,
-            html.Div(
-                id="prediction-table",
-                style={
-                    "textAlign": "center",
-                    "horizontal-align": "middle",
-                    "padding-left": "35%",
-                    "padding-right": "10%"
-                },
+            dcc.Loading(
+                id="loading-1",
+                type="default",
+                children=html.Div(
+                    id="prediction-table",
+                    style={
+                        "textAlign": "center",
+                        "horizontal-align": "middle",
+                        "padding-left": "35%",
+                        "padding-right": "10%",
+                    },
+                ),
             ),
         ]
     ),
