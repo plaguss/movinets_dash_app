@@ -3,6 +3,8 @@ os: linux
 files:
   - source: /app.py
     destination: /tmp/
+  - source: /assets/
+    destination: /tmp/
 hooks:
   BeforeInstall:
     - location: scripts/install_dependencies
