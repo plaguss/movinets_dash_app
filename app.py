@@ -78,12 +78,14 @@ def prepare_video(contents):
     # contents[:200] are a str of the form:
     # data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQABkpxtZGF0AAACrwYF//+r3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1NSByMjkxNyAwYTg0ZDk4IC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcH
     # Only the video content is passed, splitting by the ,
-    video_from_base64 = base64.b64encode(contents.split(",")[1].encode("utf-8")).decode(
-        "utf8"
-    )
+    # video_from_base64 = base64.b64encode(contents.split(",")[1].encode("utf-8")).decode(
+    #     "utf8"
+    # )
+    # Update, send the video encoded as is
+    video = contents.split(",")[1]
     # The content must be decoded to be sent as bytes
 
-    return bytes(json.dumps({"video": video_from_base64}), "utf-8")
+    return bytes(json.dumps({"video": video}), "utf-8")
 
 
 @app.callback(Output("video-loaded", "children"), [Input("upload-clip", "contents")])
