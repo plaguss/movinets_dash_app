@@ -132,6 +132,7 @@ def get_prediction(video):
             Payload=video,
         )
         prediction = prediction_response["body"]["prediction"]
+        print("prediction: ", prediction)
 
     except NoCredentialsError as exc:
         print(f"Credential errors when calling the lambda function: {exc}")
