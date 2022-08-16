@@ -4,7 +4,7 @@ files:
   - source: /app.py
     destination: /tmp/
   - source: /assets/
-    destination: /tmp/
+    destination: /tmp/assets/
 hooks:
   BeforeInstall:
     - location: scripts/install_dependencies.sh
