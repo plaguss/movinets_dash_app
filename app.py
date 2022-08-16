@@ -27,7 +27,7 @@ except Exception as exc:
 
 
 # Get access to the lambda function
-client = boto3.client("lambda")
+client = boto3.client("lambda", region_name="us-east-1")
 
 
 upload_field = dbc.Container(
