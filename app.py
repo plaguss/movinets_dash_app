@@ -78,13 +78,14 @@ def prepare_video(contents):
     # contents[:200] are a str of the form:
     # data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQABkpxtZGF0AAACrwYF//+r3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1NSByMjkxNyAwYTg0ZDk4IC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcH
     # Only the video content is passed, splitting by the ,
-    # video_from_base64 = base64.b64encode(contents.split(",")[1].encode("utf-8")).decode(
-    #     "utf8"
-    # )
+    video = base64.b64encode(contents.split(",")[1].encode("utf-8")).decode(
+        "utf8"
+    )
     # Update, send the video encoded as is
-    video = contents.split(",")[1]
+    # video = contents.split(",")[1]
     # The content must be decoded to be sent as bytes
-
+    print(f"video type and length: {type(video)}, {len(video)}")
+    print(f"video slice: {video[:50]}")
     return bytes(json.dumps({"video": video}), "utf-8")
 
 
@@ -132,11 +133,12 @@ def get_prediction(video):
             Payload=video,
         )
         prediction = prediction_response["body"]["prediction"]
-        print("prediction: ", prediction)
 
     except NoCredentialsError as exc:
         print(f"Credential errors when calling the lambda function: {exc}")
         prediction = (("ERROR", -1.0),) * 5
+
+    print(f"prediction: {prediction}")
 
     return prediction
 
