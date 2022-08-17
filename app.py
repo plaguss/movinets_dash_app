@@ -49,7 +49,6 @@ upload_field = dbc.Container(
                 ),
             ),
         ),
-        # dbc.Row(html.Div(id="output-video")),
     ]
 )
 
@@ -78,17 +77,10 @@ def prepare_video(contents):
     # contents[:200] are a str of the form:
     # data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQABkpxtZGF0AAACrwYF//+r3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1NSByMjkxNyAwYTg0ZDk4IC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcH
     # Only the video content is passed, splitting by the ,
-    # video_from_base64 = base64.b64encode(contents.split(",")[1].encode("utf-8")).decode(
+    # video = base64.b64encode(contents.split(",")[1].encode("utf-8")).decode(
     #     "utf8"
     # )
-    # Update, send the video encoded as is
-    video = base64.b64encode(contents.split(",")[1].encode("utf-8")).decode(
-        "utf8"
-    )
-    try:
-        print(f"video info: ({type(video)}, {len(video)})")
-    except Exception as exc:
-        print("TESTING, some error appears when printing video content")
+    video = contents.split(",")[1]
     # The content must be decoded to be sent as bytes
 
     return bytes(json.dumps({"video": video}), "utf-8")
@@ -131,13 +123,47 @@ submit_button = dbc.Container(
 
 
 def get_prediction(video):
-    """Calls the aws lambda function with the video passed and returns the predictions."""
+    r"""Calls the aws lambda function with the video passed and returns the predictions.
+
+    The response from the lambda is of the form:
+        {
+        'ResponseMetadata': {
+            'RequestId': 'b020e0bb-84ec-44c7-ade9-ec9cdca64877',
+            'HTTPStatusCode': 200,
+            'HTTPHeaders': {
+                'date': 'Wed, 17 Aug 2022 07:35:08 GMT',
+                'content-type': 'application/json',
+                'content-length': '229',
+                'connection': 'keep-alive',
+                'x-amzn-requestid': 'b020e0bb-84ec-44c7-ade9-ec9cdca64877',
+                'x-amzn-remapped-content-length': '0',
+                'x-amz-executed-version': '$LATEST',
+                'x-amzn-trace-id': 'root=1-62fc9a2b-0fce49404f9d593c65a9566f;sampled=0'
+            },
+            'RetryAttempts': 0
+        },
+        'StatusCode': 200,
+        'ExecutedVersion': '$LATEST',
+        'Payload': <botocore.response.StreamingBody object at 0x7f2a0dffb0a0>
+    }
+    The Payload must be:
+    {
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        },
+        'statusCode': 200,
+        'body': '{"prediction": [["ERROR", -1.0], ["ERROR", -1.0], ["ERROR", -1.0], ["ERROR", -1.0], ["ERROR", -1.0]]}'
+    }
+    """
     try:
         prediction_response = client.invoke(
             FunctionName="movinet_for_crossfit",
             Payload=video,
         )
-        prediction = prediction_response["body"]["prediction"]
+        response = json.loads(prediction_response['Payload'].read().decode("utf-8"))
+        prediction = json.loads(response["body"])["prediction"]
+        print(f"prediction: {prediction}")
 
     except NoCredentialsError as exc:
         print(f"Credential errors when calling the lambda function: {exc}")
@@ -163,7 +189,6 @@ def get_table(prediction):
     )
 
 
-# @app.callback(Output("video-loaded", "children"), [Input("submit-video-button", "contents")])
 @app.callback(
     Output("prediction-table", "children"),
     [Input("submit-video-button", "n_clicks")],
@@ -176,7 +201,6 @@ def call_lambda(n_clicks, contents):
     # data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQABkpxtZGF0AAACrwYF//+r3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1NSByMjkxNyAwYTg0ZDk4IC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcH
     video = prepare_video(contents)
     prediction = get_prediction(video)
-    # TODO: Call the aws lambda function
 
     return get_table(prediction)
 
@@ -337,5 +361,5 @@ app.layout = dbc.Container(
 
 
 if __name__ == "__main__":
-#    app.run_server(debug=True)  # When debugging
+    # app.run_server(debug=True)  # When debugging
     app.run_server(host='0.0.0.0', port="80")
