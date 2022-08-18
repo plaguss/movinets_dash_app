@@ -6,3 +6,7 @@ App for crossfit movement classification with movinets
 ```bash
 git push origin master
 ```
+
+### How to use the app
+
+Insert gif.
